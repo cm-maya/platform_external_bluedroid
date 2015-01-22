@@ -47,7 +47,8 @@
 #define LOG_TAG "audio_a2dp_hw"
 /* #define LOG_NDEBUG 0 */
 #include <cutils/log.h>
-
+#include <cutils/properties.h>
+ 
 /*****************************************************************************
 **  Constants & Macros
 ******************************************************************************/
@@ -563,6 +564,12 @@ static int out_standby(struct audio_stream *stream)
         retVal =  suspend_audio_datapath(out, true);
     else
         retVal = 0;
+ 
+    char prop_val[PROPERTY_VALUE_MAX] = "";
+    property_get("media.audio.screen_off_playing",prop_val,"");
+    DEBUG("stop audio path Nor debug 222 %s",prop_val);
+    if (strcmp(prop_val,"0") != 0||strcmp(prop_val,"0") != 1)
+         property_set("media.audio.screen_off_playing","1");
     pthread_mutex_unlock (&out->lock);
 
     return retVal;
@@ -622,7 +629,24 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
             retval = 0;
         }
     }
-
+ 
+    retval = str_parms_get_str(parms, "screen_state", keyval, sizeof(keyval));
+ 
+    if (retval >= 0)
+    {
+        if (strcmp(keyval, "on") == 0)
+        {
+                        char prop_val[PROPERTY_VALUE_MAX] = "";
+                        property_get("media.audio.screen_off_playing",prop_val,"");
+                        if (strcmp(prop_val,"0") != 0)
+                                property_set("media.audio.screen_off_playing","0");
+        }
+        else if (out->state == AUDIO_A2DP_STATE_STARTED)
+        {
+                        property_set("media.audio.screen_off_playing","3");
+        }
+    }
+ 
     pthread_mutex_unlock(&out->lock);
     str_parms_destroy(parms);
 
@@ -913,7 +937,7 @@ static char * adev_get_parameters(const struct audio_hw_device *dev,
 
     parms = str_parms_create_str(keys);
 
-    str_parms_dump(parms);
+    //str_parms_dump(parms);
 
     str_parms_destroy(parms);
 
